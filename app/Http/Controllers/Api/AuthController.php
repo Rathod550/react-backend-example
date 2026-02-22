@@ -11,30 +11,38 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // LOGIN
     public function login(Request $request)
     {
-        // validate data coming from React
+        \Log::info($request->all());
+        // validate
         $request->validate([
-            'email' => ['required','email'],
-            'password' => ['required']
+            'email' => ['required', 'email'],
+            'password' => ['required'],
         ]);
 
+        // find user
         $user = User::where('email', $request->email)->first();
 
+        // check password
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
-                'message' => 'Invalid credentials'
+                'message' => 'Invalid email or password'
             ], 401);
         }
 
-        // create API token
+        // IMPORTANT: delete old tokens (single device login)
+        $user->tokens()->delete();
+
+        // create new token
         $token = $user->createToken('react-app')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login successful',
             'token' => $token,
-            'user' => $user
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
         ]);
     }
 
